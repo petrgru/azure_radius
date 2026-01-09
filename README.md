@@ -4,83 +4,89 @@
 [![Azure](https://img.shields.io/badge/Azure-AD%20Integration-blue.svg)](https://azure.microsoft.com/)
 [![RADIUS](https://img.shields.io/badge/Protocol-RADIUS-orange.svg)](https://tools.ietf.org/html/rfc2865)
 
-Un servidor RADIUS moderno y escalable que se integra con Azure Active Directory para autenticación de usuarios. Soporta múltiples dominios, validación de credenciales híbrida y está optimizado para trabajar con FortiGate y otros dispositivos de red.
+A modern and scalable RADIUS server that integrates with Azure Active Directory for user authentication. Supports multiple domains, hybrid credential validation, and is optimized to work with FortiGate and other network devices.
 
-## 🚀 Características Principales
+## 🚀 Key Features
 
-- ✅ **Integración con Azure AD**: Autenticación usando Microsoft Graph API
-- ✅ **Soporte Multi-Dominio**: Configuración de múltiples dominios permitidos
-- ✅ **Validación Híbrida**: Combina validación de usuarios con verificación de credenciales
-- ✅ **Rate Limiting**: Protección contra ataques de fuerza bruta
-- ✅ **Cache Inteligente**: Cache de validaciones exitosas para mejorar rendimiento
-- ✅ **Logging Detallado**: Logs estructurados con Winston
-- ✅ **Docker Ready**: Contenedorización completa con Docker Compose
-- ✅ **MySQL Integration**: Base de datos para almacenamiento de datos
-- ✅ **MFA Support**: Manejo básico de usuarios con Multi-Factor Authentication
+- ✅ **Azure AD Integration**: Authentication using Microsoft Graph API
+- ✅ **Multi-Domain Support**: Configuration for multiple allowed domains
+- ✅ **Hybrid Validation**: Combines user validation with credential verification
+- ✅ **Rate Limiting**: Protection against brute force attacks
+- ✅ **Smart Caching**: Caching of successful validations to improve performance
+- ✅ **Detailed Logging**: Structured logs with Winston
+- ✅ **Docker Ready**: Complete containerization with Docker Compose
+- ✅ **MySQL Integration**: Database for data storage
+- ✅ **MFA Support**: Basic support for users with Multi-Factor Authentication
 
-## 📋 Requisitos Previos
+## 📋 Prerequisites
 
-### Software Requerido
-- **Docker** (versión 20.10 o superior)
-- **Docker Compose** (versión 1.29 o superior)
-- **Git** (para clonar el repositorio)
-- **Bash** (para ejecutar el script de configuración)
+### Required Software
+- **Docker** (version 20.10 or higher)
+- **Docker Compose** (version 1.29 or higher)
+- **Git** (to clone the repository)
+- **Bash** (to run the setup script)
 
-### Cuenta de Azure AD
-- **Tenant ID** de Azure Active Directory
-- **Application Registration** con permisos de aplicación
-- **Client ID** y **Client Secret** de la aplicación
-- **RADIUS Server ID** generado en Azure
+### Azure AD Account
+- **Tenant ID** from Azure Active Directory
+- **Application Registration** with application permissions
+- **Client ID** and **Client Secret** from the application
+- **RADIUS Server ID** generated in Azure
 
-### Permisos de Azure AD
-La aplicación registrada debe tener los siguientes permisos:
+### Azure AD Permissions
+The registered application must have the following permissions:
 - `User.Read.All` (Application)
 - `Directory.Read.All` (Application)
 
-## 🛠️ Instalación Rápida
+## 🛠️ Quick Installation
 
-### Opción 1: Script Automático (Recomendado)
+### Option 1: Automatic Script (Recommended)
 
 ```bash
-# Clonar el repositorio
+# Clone the repository
 git clone https://github.com/De0xyS3/azure_radius.git
 cd azure_radius
 
-# Hacer ejecutable el script
+# Make the script executable
 chmod +x setup_radius.sh
 
-# Ejecutar el script de configuración
+# Run the setup script
 sudo ./setup_radius.sh
 ```
 
-El script automático:
-- ✅ Instala Docker y Docker Compose si no están presentes
-- ✅ Configura MySQL automáticamente
-- ✅ Solicita toda la información necesaria de Azure
-- ✅ Permite configurar múltiples dominios
-- ✅ Crea y configura todos los archivos necesarios
-- ✅ Inicia los servicios automáticamente
+The automatic script:
+- ✅ Installs Docker and Docker Compose if not present
+- ✅ Configures MySQL automatically
+- ✅ Requests all necessary Azure information
+- ✅ Allows configuration of multiple domains
+- ✅ Creates and configures all necessary files
+- ✅ Starts services automatically
 
-### Opción 2: Configuración Manual
+### Option 2: Manual Configuration
 
 ```bash
-# 1. Clonar el repositorio
+# 1. Clone the repository
 git clone https://github.com/De0xyS3/azure_radius.git
 cd azure_radius
 
-# 2. Crear archivo .env
+# 2. Create .env file
 cp .env.example .env
-# Editar .env con tus credenciales de Azure
+# Edit .env with your Azure credentials
 
-# 3. Construir y ejecutar
+# 3. Initialize database (REQUIRED - First time)
+./init_database_docker.sh
+# Or see DATABASE_SETUP.md for manual options
+
+# 4. Build and run
 docker-compose up -d
 ```
 
-## ⚙️ Configuración
+> **⚠️ IMPORTANT**: You must initialize the database BEFORE first use. See [DATABASE_SETUP.md](DATABASE_SETUP.md) for detailed instructions.
 
-### Variables de Entorno
+## ⚙️ Configuration
 
-Crea un archivo `.env` con las siguientes variables:
+### Environment Variables
+
+Create a `.env` file with the following variables:
 
 ```env
 # Azure AD Configuration
@@ -101,71 +107,111 @@ DB_USER=radiususer
 DB_PASSWORD=your-db-password
 
 # Domain Configuration
-ALLOWED_DOMAINS=globalhitss.com,otrodominio.com
+ALLOWED_DOMAINS=globalhitss.com,otherdomain.com
 
 # Debug Configuration
 DEBUG=*
 ```
 
-### Configuración de Dominios
+### Domain Configuration
 
-#### Un Solo Dominio
+#### Single Domain
 ```env
 ALLOWED_DOMAINS=contoso.com
 ```
 
-#### Múltiples Dominios
+#### Multiple Domains
 ```env
-ALLOWED_DOMAINS=contoso.com,otrodominio.com,tercerdominio.com
+ALLOWED_DOMAINS=contoso.com,otherdomain.com,thirddomain.com
 ```
 
-### Configuración de Azure AD
+## 🗄️ Database Configuration
 
-#### 1. Registrar Aplicación en Azure AD
-1. Ve a [Azure Portal](https://portal.azure.com)
-2. Navega a **Azure Active Directory** → **App registrations**
-3. Haz clic en **New registration**
-4. Completa la información:
+### Required Initialization
+
+**The server does NOT create tables automatically.** You must initialize the database before first use.
+
+#### Option 1: Interactive Script (Recommended)
+```bash
+./init_database_docker.sh
+```
+
+#### Option 2: Manual Command
+```bash
+# If MySQL is in Docker
+docker exec -i mysql_container mysql -u root -p$MYSQL_ROOT_PASSWORD radius_db < init_database.sql
+
+# If RADIUS is in Docker and MySQL is external
+docker exec -i radius_container sh -c 'mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD $DB_NAME' < init_database.sql
+```
+
+#### Option 3: From host
+```bash
+mysql -h <host> -u <user> -p<password> <database> < init_database.sql
+```
+
+📖 **See [DATABASE_SETUP.md](DATABASE_SETUP.md) for detailed instructions**
+
+### Database Structure
+
+The `user_radius_access` table stores allowed users:
+```sql
+CREATE TABLE user_radius_access (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_principal_name VARCHAR(255) NOT NULL,
+    displayName VARCHAR(255),
+    radius_server_id VARCHAR(100) NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Azure AD Configuration
+
+#### 1. Register Application in Azure AD
+1. Go to [Azure Portal](https://portal.azure.com)
+2. Navigate to **Azure Active Directory** → **App registrations**
+3. Click on **New registration**
+4. Complete the information:
    - **Name**: `RADIUS Server`
    - **Supported account types**: `Accounts in this organizational directory only`
-   - **Redirect URI**: Deja vacío
+   - **Redirect URI**: Leave empty
 
-#### 2. Configurar Permisos
-1. Ve a **API permissions**
-2. Haz clic en **Add a permission**
-3. Selecciona **Microsoft Graph**
-4. Selecciona **Application permissions**
-5. Agrega:
+#### 2. Configure Permissions
+1. Go to **API permissions**
+2. Click on **Add a permission**
+3. Select **Microsoft Graph**
+4. Select **Application permissions**
+5. Add:
    - `User.Read.All`
    - `Directory.Read.All`
-6. Haz clic en **Grant admin consent**
+6. Click on **Grant admin consent**
 
-#### 3. Crear Client Secret
-1. Ve a **Certificates & secrets**
-2. Haz clic en **New client secret**
-3. Agrega descripción y selecciona expiración
-4. **Copia el valor** (solo se muestra una vez)
+#### 3. Create Client Secret
+1. Go to **Certificates & secrets**
+2. Click on **New client secret**
+3. Add description and select expiration
+4. **Copy the value** (only shown once)
 
-#### 4. Obtener IDs
-- **Tenant ID**: En **Overview** de la aplicación
-- **Client ID**: En **Overview** de la aplicación
-- **Client Secret**: El valor copiado en el paso anterior
+#### 4. Get IDs
+- **Tenant ID**: In application **Overview**
+- **Client ID**: In application **Overview**
+- **Client Secret**: The value copied in the previous step
 
-## 🔧 Configuración de FortiGate
+## 🔧 FortiGate Configuration
 
-### Configuración Básica
+### Basic Configuration
 ```fortios
 config user radius
     edit "Azure-RADIUS"
-        set server "IP-DEL-SERVIDOR-RADIUS"
-        set secret "TU-RADIUS-SECRET"
+        set server "RADIUS-SERVER-IP"
+        set secret "YOUR-RADIUS-SECRET"
         set port 1812
         set auth-type auto
     next
 end
 ```
 
-### Configuración de Política
+### Policy Configuration
 ```fortios
 config firewall policy
     edit 1
@@ -183,117 +229,117 @@ config firewall policy
 end
 ```
 
-## 📊 Monitoreo y Logs
+## 📊 Monitoring and Logs
 
-### Ver Logs del Servidor
+### View Server Logs
 ```bash
-# Ver logs en tiempo real
-docker logs -f nombre-contenedor-radius
+# View logs in real-time
+docker logs -f radius-container-name
 
-# Ver logs de los últimos 100 eventos
-docker logs --tail 100 nombre-contenedor-radius
+# View last 100 events
+docker logs --tail 100 radius-container-name
 
-# Ver logs con timestamps
-docker logs -t nombre-contenedor-radius
+# View logs with timestamps
+docker logs -t radius-container-name
 ```
 
-### Logs Importantes
-- `✅ credentials valid`: Autenticación exitosa
-- `❌ validation failed`: Error de autenticación
-- `Rate limited`: Usuario bloqueado por intentos fallidos
-- `Domain not allowed`: Dominio no permitido
+### Important Logs
+- `✅ credentials valid`: Successful authentication
+- `❌ validation failed`: Authentication error
+- `Rate limited`: User blocked for failed attempts
+- `Domain not allowed`: Domain not allowed
 
-### Métricas de Rendimiento
+### Performance Metrics
 ```bash
-# Ver estadísticas del contenedor
-docker stats nombre-contenedor-radius
+# View container statistics
+docker stats radius-container-name
 
-# Ver uso de recursos
+# View resource usage
 docker system df
 ```
 
 ## 🔍 Troubleshooting
 
-### Problemas Comunes
+### Common Issues
 
-#### 1. Error de Autenticación Azure
+#### 1. Azure Authentication Error
 ```
 Error: AADSTS700016: Application with identifier 'xxx' was not found
 ```
-**Solución**: Verificar que el Client ID sea correcto y la aplicación esté registrada.
+**Solution**: Verify that the Client ID is correct and the application is registered.
 
-#### 2. Error de Permisos
+#### 2. Permissions Error
 ```
 Error: Insufficient privileges to complete the operation
 ```
-**Solución**: Verificar que se haya dado consentimiento de administrador a los permisos.
+**Solution**: Verify that admin consent has been granted to the permissions.
 
-#### 3. Dominio No Permitido
+#### 3. Domain Not Allowed
 ```
-Domain not allowed for username: usuario@dominioinvalido.com
+Domain not allowed for username: user@invaliddomain.com
 ```
-**Solución**: Agregar el dominio a `ALLOWED_DOMAINS` en el archivo `.env`.
+**Solution**: Add the domain to `ALLOWED_DOMAINS` in the `.env` file.
 
 #### 4. Rate Limiting
 ```
-Rate limited authentication attempt for usuario@dominio.com
+Rate limited authentication attempt for user@domain.com
 ```
-**Solución**: Esperar 5 minutos o revisar si hay intentos de ataque.
+**Solution**: Wait 5 minutes or check for attack attempts.
 
-#### 5. Puerto en Uso
+#### 5. Port Already in Use
 ```
 Error: port is already allocated
 ```
-**Solución**: Cambiar el puerto en la variable `PORT` del archivo `.env`.
+**Solution**: Change the port in the `PORT` variable in the `.env` file.
 
-### Comandos de Diagnóstico
+### Diagnostic Commands
 
 ```bash
-# Verificar conectividad con Azure
-docker exec nombre-contenedor-radius node -e "
+# Check Azure connectivity
+docker exec radius-container-name node -e "
 const { ClientSecretCredential } = require('@azure/identity');
 const credential = new ClientSecretCredential(
   process.env.AZURE_TENANT_ID,
   process.env.AZURE_CLIENT_ID,
   process.env.AZURE_CLIENT_SECRET
 );
-console.log('Credenciales válidas');
+console.log('Valid credentials');
 "
 
-# Verificar configuración del servidor
-docker exec nombre-contenedor-radius cat /app/.env
+# Check server configuration
+docker exec radius-container-name cat /app/.env
 
-# Verificar logs de MySQL
+# Check MySQL logs
 docker logs radius-mysql
 ```
 
-## 🔒 Seguridad
+## 🔒 Security
 
-### Mejores Prácticas
+### Best Practices
 
 1. **Secrets Management**
-   - Usa variables de entorno para credenciales
-   - Rota regularmente los client secrets
-   - No commits credenciales al repositorio
+   - Use environment variables for credentials
+   - Rotate client secrets regularly
+   - Don't commit credentials to the repository
 
 2. **Network Security**
-   - Usa firewalls para restringir acceso
-   - Configura VPN para acceso remoto
-   - Monitorea logs de acceso
+   - Use firewalls to restrict access
+   - Configure VPN for remote access
+   - Monitor access logs
 
 3. **Azure AD Security**
-   - Usa permisos mínimos necesarios
-   - Revisa regularmente los permisos de aplicación
-   - Habilita auditoría de Azure AD
+   - Use minimum necessary permissions
+   - Regularly review application permissions
+   - Enable Azure AD auditing
 
 4. **Rate Limiting**
-   - El servidor incluye protección automática
-   - Configura límites adicionales en FortiGate
-   - Monitorea intentos de autenticación fallidos
+   - Server includes automatic protection
+   - Configure additional limits in FortiGate
+   - Monitor failed authentication attempts
 
-## 📈 Escalabilidad
+## 📈 Scalability
 
-### Configuración para Producción
+### Production Configuration
 
 ```yaml
 version: '3.8'
@@ -351,61 +397,61 @@ networks:
 ```
 
 ### Load Balancing
-Para múltiples instancias, considera usar:
-- **HAProxy** para balanceo de carga
-- **Redis** para cache compartido
-- **MySQL Cluster** para alta disponibilidad
+For multiple instances, consider using:
+- **HAProxy** for load balancing
+- **Redis** for shared cache
+- **MySQL Cluster** for high availability
 
-## 🤝 Contribución
+## 🤝 Contributing
 
-### Cómo Contribuir
+### How to Contribute
 
-1. Fork el repositorio
-2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit tus cambios (`git commit -am 'Agregar nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Crea un Pull Request
+1. Fork the repository
+2. Create a branch for your feature (`git checkout -b feature/new-feature`)
+3. Commit your changes (`git commit -am 'Add new feature'`)
+4. Push to the branch (`git push origin feature/new-feature`)
+5. Create a Pull Request
 
-### Estándares de Código
+### Code Standards
 
-- Usa ESLint para linting
-- Sigue las convenciones de Node.js
-- Agrega tests para nuevas funcionalidades
-- Documenta cambios importantes
+- Use ESLint for linting
+- Follow Node.js conventions
+- Add tests for new features
+- Document important changes
 
-## 📄 Licencia
+## 📄 License
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+This project is licensed under the MIT License. See the `LICENSE` file for more details.
 
-## 🆘 Soporte
+## 🆘 Support
 
-### Canales de Soporte
+### Support Channels
 
 - **Issues**: [GitHub Issues](https://github.com/De0xyS3/azure_radius/issues)
-- **Documentación**: [Wiki del Proyecto](https://github.com/De0xyS3/azure_radius/wiki)
-- **Discusiones**: [GitHub Discussions](https://github.com/De0xyS3/azure_radius/discussions)
+- **Documentation**: [Project Wiki](https://github.com/De0xyS3/azure_radius/wiki)
+- **Discussions**: [GitHub Discussions](https://github.com/De0xyS3/azure_radius/discussions)
 
-### Información de Contacto
+### Contact Information
 
-- **Autor**: De0xyS3
-- **Email**: [Tu email]
+- **Author**: De0xyS3
+- **Email**: [Your email]
 - **GitHub**: [@De0xyS3](https://github.com/De0xyS3)
 
 ## 📝 Changelog
 
-### v2.0.0 (Actual)
-- ✅ Soporte multi-dominio
-- ✅ Script de configuración automática
-- ✅ Validación híbrida de credenciales
-- ✅ Cache inteligente
-- ✅ Rate limiting mejorado
-- ✅ Logging estructurado
+### v2.0.0 (Current)
+- ✅ Multi-domain support
+- ✅ Automatic setup script
+- ✅ Hybrid credential validation
+- ✅ Smart caching
+- ✅ Improved rate limiting
+- ✅ Structured logging
 
 ### v1.0.0
-- ✅ Integración básica con Azure AD
-- ✅ Soporte RADIUS estándar
+- ✅ Basic Azure AD integration
+- ✅ Standard RADIUS support
 - ✅ Docker containerization
 
 ---
 
-**¿Necesitas ayuda?** Revisa la sección de [Troubleshooting](#-troubleshooting) o abre un issue en GitHub.
+**Need help?** Check the [Troubleshooting](#-troubleshooting) section or open an issue on GitHub.

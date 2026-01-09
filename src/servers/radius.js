@@ -6,7 +6,7 @@ import { ClientSecretCredential, UsernamePasswordCredential } from "@azure/ident
 import { Client } from "@microsoft/microsoft-graph-client"
 import { TokenCredentialAuthenticationProvider } from "@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials/index.js"
 import winston from "winston"
-import { isUserAllowed } from "../utils/allowedUsers.js"
+import { isUserAllowed, getUserWithPassword, updateUserPassword, verifyPassword } from "../utils/allowedUsers.js"
 import crypto from "crypto"
 
 const server = dgram.createSocket("udp4")
@@ -236,47 +236,81 @@ class RadiusServer {
     }
   }
 
-  // ✅ NUEVA FUNCIÓN: Solo validar credenciales, no autenticar
+  // ✅ NEW: Validate credentials with DB-first, Azure fallback strategy
   async validateCredentials(username, password) {
     try {
-      // 1. Verificar si el usuario está en la lista de permitidos
+      // 1. Check if user is in allowed list
       const isAllowed = await isUserAllowed(username)
       if (!isAllowed) {
         return { success: false, message: "❌ validation failed: User not allowed" }
       }
 
-      // 2. Verificar cache de validaciones exitosas
+      // 2. Check validation cache for recent successful attempts
       const cacheKey = this.createCacheKey(username, password)
       const cached = this.validationCache.get(cacheKey)
 
       if (cached && cached.expiresAt > Date.now()) {
-        logger.info(`Validation cache hit for ${username}`)
+        logger.info(`✅ Validation cache hit for ${username}`)
         return { success: true, message: "✅ credentials valid (cached)" }
       }
 
-      // 3. Validar que el usuario existe y está habilitado
+      // 3. Get user from database with stored password hash
+      const dbUser = await getUserWithPassword(username)
+      
+      if (dbUser && dbUser.password_hash) {
+        // 3a. Try local database password first
+        logger.info(`🔐 Trying local password validation for ${username}`)
+        
+        if (verifyPassword(password, dbUser.password_hash)) {
+          logger.info(`✅ Local password valid for ${username}`)
+          
+          // Cache successful validation
+          this.validationCache.set(cacheKey, {
+            success: true,
+            expiresAt: Date.now() + this.VALIDATION_CACHE_TTL,
+            timestamp: Date.now(),
+          })
+          
+          return { success: true, message: "✅ credentials valid (local DB)" }
+        }
+        
+        logger.info(`⚠️  Local password invalid for ${username}, trying Azure AD fallback`)
+      } else {
+        logger.info(`⚠️  No local password for ${username}, validating with Azure AD`)
+      }
+
+      // 4. Fallback: Validate with Azure AD
+      logger.info(`🔍 Validating ${username} with Azure AD`)
+      
+      // 4a. First verify user exists and is enabled
       const userValidation = await this.validateUserExists(username)
       if (!userValidation.success) {
         return userValidation
       }
 
-      // 4. ✅ VALIDAR CREDENCIALES usando método híbrido
+      // 4b. Validate password with Azure
       const credentialValidation = await this.validatePasswordWithAzure(username, password)
 
       if (credentialValidation.success) {
-        // Cachear validación exitosa por corto tiempo
+        logger.info(`✅ Azure AD validation successful for ${username}`)
+        
+        // 4c. Store/update password in database for future local validation
+        await updateUserPassword(username, password)
+        
+        // Cache successful validation
         this.validationCache.set(cacheKey, {
           success: true,
           expiresAt: Date.now() + this.VALIDATION_CACHE_TTL,
           timestamp: Date.now(),
         })
 
-        return { success: true, message: "✅ credentials valid" }
+        return { success: true, message: "✅ credentials valid (Azure AD, password synced)" }
       } else {
+        logger.warn(`❌ Azure AD validation failed for ${username}: ${credentialValidation.error}`)
         return { success: false, message: `❌ validation failed: ${credentialValidation.error}` }
       }
     } catch (error) {
-      logger.error("Error during credential validation:", error)
+      logger.error(`❌ Error during credential validation for ${username}:`, error.message)
       return { success: false, message: "❌ validation failed: " + error.message }
     }
   }
